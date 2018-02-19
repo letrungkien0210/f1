@@ -1,12 +1,12 @@
 // Load required packages
-var oauth2orize = require('oauth2orize')
-var User = require('../models/user');
-var Client = require('../models/client');
-var Token = require('../models/token');
-var Code = require('../../../../../LTKien/simplefinance/models/code');
+const oauth2orize = require('oauth2orize')
+const User = require('../models/User');
+const Client = require('../models/Client');
+const Token = require('../models/Token');
+const Code = require('../models/Code');
 
 // Create OAuth 2.0 server
-var server = oauth2orize.createServer();
+const server = oauth2orize.createServer();
 
 // Register serialialization and deserialization functions.
 //

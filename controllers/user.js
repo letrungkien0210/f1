@@ -1,5 +1,5 @@
 // Load required packages
-var User = require('../models/user');
+var User = require('../models/User');
 
 // Create endpoint /api/users for POST
 exports.postUsers = function(req, res) {
