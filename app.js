@@ -1,62 +1,105 @@
-const express = require('express');
-const morgan = require('morgan');
 const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/simplefinance');
-const ejs = require('ejs');
-const session = require('express-session');
+const client = require('./client');
+const cookieParser = require('cookie-parser');
+const config = require('./config');
+const db = require('./db');
+const express = require('express');
+const expressSession = require('express-session');
+const fs = require('fs');
+const https = require('https');
+const oauth2 = require('./oauth2');
+const passport = require('passport');
+const path = require('path');
+const site = require('./site');
+const token = require('./token');
+const user = require('./user');
 
-const authController = require('./controllers/auth');
-const clientController = require('./controllers/client');
-const userController = require('./controllers/user');
-const oauth2Controller = require('./controllers/oauth2');
+console.log('Using MemoryStore for the data store');
+console.log('Using MemoryStore for the Session');
+const MemoryStore = expressSession.MemoryStore;
 
+// Express configuration
 const app = express();
-// configure app to use bodyParser()
-// this will let us get the data from a POST
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
 app.set('view engine', 'ejs');
+app.use(cookieParser());
 
-// Use express session support since OAuth2orize requires it
-app.use(session({
-  secret: 'Super Secret Session Key',
+// Session Configuration
+app.use(expressSession({
   saveUninitialized: true,
-  resave: true
+  resave: true,
+  secret: config.session.secret,
+  store: new MemoryStore(),
+  key: 'authorization.sid',
+  cookie: { maxAge: config.session.maxAge },
 }));
 
-app.use(morgan('combined'));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(passport.initialize());
+app.use(passport.session());
 
-// routers
-app.get('/', (req, res) => {
-  res.send('hello, world!');
+// Passport configuration
+require('./auth');
+
+app.get('/', site.index);
+app.get('/login', site.loginForm);
+app.post('/login', site.login);
+app.get('/logout', site.logout);
+app.get('/account', site.account);
+
+app.get('/dialog/authorize', oauth2.authorization);
+app.post('/dialog/authorize/decision', oauth2.decision);
+app.post('/oauth/token', oauth2.token);
+
+app.get('/api/userinfo', user.info);
+app.get('/api/clientinfo', client.info);
+
+// Mimicking google's token info endpoint from
+// https://developers.google.com/accounts/docs/OAuth2UserAgent#validatetoken
+app.get('/api/tokeninfo', token.info);
+
+// Mimicking google's token revoke endpoint from
+// https://developers.google.com/identity/protocols/OAuth2WebServer
+app.get('/api/revoke', token.revoke);
+
+// static resources for stylesheets, images, javascript files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Catch all for error messages.  Instead of a stack
+// trace, this will log the json of the error message
+// to the browser and pass along the status with it
+app.use((err, req, res, next) => {
+  if (err) {
+    if (err.status == null) {
+      console.error('Internal unexpected error from:', err.stack);
+      res.status(500);
+      res.json(err);
+    } else {
+      res.status(err.status);
+      res.json(err);
+    }
+  } else {
+    next();
+  }
 });
 
-const router = express.Router();
+// From time to time we need to clean up any expired tokens
+// in the database
+setInterval(() => {
+  db.accessTokens.removeExpired()
+    .catch(err => console.error('Error trying to remove expired tokens:', err.stack));
+}, config.db.timeToCheckExpiredTokens * 1000);
 
-// Create endpoint handlers for /users
-router.route('/users')
-  .post(userController.postUsers)
-  .get(authController.isAuthenticated, userController.getUsers);
+// TODO: Change these for your own certificates.  This was generated through the commands:
+// openssl genrsa -out privatekey.pem 2048
+// openssl req -new -key privatekey.pem -out certrequest.csr
+// openssl x509 -req -in certrequest.csr -signkey privatekey.pem -out certificate.pem
+const options = {
+  key: fs.readFileSync(path.join(__dirname, 'certs/privatekey.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'certs/certificate.pem')),
+};
 
-// Create endpoint handlers for /clients
-router.route('/clients')
-  .post(authController.isAuthenticated, clientController.postClients)
-  .get(authController.isAuthenticated, clientController.getClients);
-
-// Create endpoint handlers for oauth2 authorize
-router.route('/oauth2/authorize')
-  .get(authController.isAuthenticated, oauth2Controller.authorization)
-  .post(authController.isAuthenticated, oauth2Controller.decision);
-
-// Create endpoint handlers for oauth2 token
-router.route('/oauth2/token')
-  .post(authController.isClientAuthenticated, oauth2Controller.token);
-
-app.use('/api/', router);
-
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  console.log(`Listening on port ${port}...`);
-});
+// Create our HTTPS server listening on port 3000.
+https.createServer(options, app)
+  .listen(3000);
+console.log('OAuth 2.0 Authorization Server started on port 3000');

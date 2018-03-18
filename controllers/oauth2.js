@@ -8,7 +8,7 @@ const Code = require('../models/Code');
 // Create OAuth 2.0 server
 const server = oauth2orize.createServer();
 
-// Register serialialization and deserialization functions.
+// Register serialization and deserialization functions.
 //
 // When a client redirects a user to user authorization endpoint, an
 // authorization transaction is initiated.  To complete the transaction, the
