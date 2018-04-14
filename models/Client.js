@@ -3,10 +3,11 @@ const mongoose = require('mongoose');
 
 // Define our client schema
 const ClientSchema = new mongoose.Schema({
-  name: { type: String, unique: true, required: true },
   id: { type: String, required: true },
+  name: { type: String, unique: true, required: true },
   secret: { type: String, required: true },
-  userId: { type: String, required: true }
+  clientId: { type: String },
+  trustedClient: { type: Boolean }
 });
 
 // Export the Mongoose model

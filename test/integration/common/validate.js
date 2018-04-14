@@ -27,19 +27,18 @@ validate.accessToken = (response, body) => {
   expect(response.statusCode)
     .to
     .eql(200);
-  const jsonResponse = JSON.parse(body);
   expect(response.headers['content-type'])
     .to
     .eql('application/json');
-  expect(Object.keys(jsonResponse))
+  expect(Object.keys(body))
     .to
     .have
     .lengthOf(3);
-  utils.verifyToken(jsonResponse.access_token);
-  expect(jsonResponse.expires_in)
+  utils.verifyToken(body.access_token);
+  expect(body.expires_in)
     .to
     .eql(3600);
-  expect(jsonResponse.token_type)
+  expect(body.token_type)
     .to
     .eql('Bearer');
 };
@@ -214,15 +213,15 @@ validate.clientJson = (response, body) => {
   expect(response.statusCode)
     .to
     .eql(200);
-  const jsonResponse = JSON.parse(body);
+  // const jsonResponse = JSON.parse(body);
   expect(response.headers['content-type'])
     .to
     .eql('application/json; charset=utf-8');
-  expect(Object.keys(jsonResponse))
+  expect(Object.keys(body))
     .to
     .have
     .lengthOf(3);
-  expect(jsonResponse)
+  expect(body)
     .to
     .eql({
       client_id: '3',

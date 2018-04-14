@@ -1,7 +1,14 @@
+const process = require('process');
+const uuid = require('uuid');
+
 const config = require('./config');
 const db = require('./db');
 const utils = require('./utils');
-const process = require('process');
+
+const Token = require('./models/Token');
+const RefreshToken = require('./models/RefreshToken');
+const User = require('./models/User');
+const Client = require('./models/Client');
 
 /** Validate object to attach all functions to  */
 const validate = Object.create(null);
@@ -61,7 +68,7 @@ validate.userExists = (user) => {
  */
 validate.client = (client, clientSecret) => {
   validate.clientExists(client);
-  if (client.clientSecret !== clientSecret) {
+  if (client.secret !== clientSecret) {
     validate.logAndThrow('Client secret does not match');
   }
   return client;
@@ -88,19 +95,24 @@ validate.clientExists = (client) => {
  * @throws  {Error}   If the token is not valid
  * @returns {Promise} Resolved with the user or client associated with the token if valid
  */
-validate.token = (token, accessToken) => {
+validate.token = async (token, accessToken) => {
   utils.verifyToken(accessToken);
-  
   // token is a user token
   if (token.userID != null) {
-    return db.users.find(token.userID)
-      .then(user => validate.userExists(user))
-      .then(user => user);
+    const user = await User.findOne({ id: token.userId });
+    await validate.userExists(user)
+    return user;
+    // return db.users.find(token.userID)
+    //   .then(user => validate.userExists(user))
+    //   .then(user => user);
   }
   // token is a client token
-  return db.clients.find(token.clientID)
-    .then(client => validate.clientExists(client))
-    .then(client => client);
+  const client = await Client.findOne({ clientId: token.clientId });
+  await validate.clientExists(client);
+  return client;
+  // return db.clients.find(token.clientID)
+  //   .then(client => validate.clientExists(client))
+  //   .then(client => client);
 };
 
 /**
@@ -158,13 +170,21 @@ validate.isRefreshToken = ({ scope }) => scope != null && scope.indexOf('offline
  * @throws  {Object}  scope    - the scope
  * @returns {Promise} The resolved refresh token after saved
  */
-validate.generateRefreshToken = ({ userId, clientID, scope }) => {
+validate.generateRefreshToken = async ({ userId, clientID, scope }) => {
   const refreshToken = utils.createToken({
     sub: userId,
     exp: config.refreshToken.expiresIn
   });
-  return db.refreshTokens.save(refreshToken, userId, clientID, scope)
-    .then(() => refreshToken);
+  const refreshTokenModel = new RefreshToken();
+  refreshTokenModel.id = uuid.v1();
+  refreshTokenModel.refreshToken = refreshToken;
+  refreshTokenModel.userId = userId;
+  refreshTokenModel.clientId = clientID;
+  refreshTokenModel.scope = scope;
+  await refreshTokenModel.save();
+  return refreshToken;
+  // return db.refreshTokens.save(refreshToken, userId, clientID, scope)
+  //   .then(() => refreshToken);
 };
 
 /**
@@ -174,14 +194,24 @@ validate.generateRefreshToken = ({ userId, clientID, scope }) => {
  * @param   {scope}    scope    - The scope
  * @returns {Promise}  The resolved refresh token after saved
  */
-validate.generateToken = ({ userID, clientID, scope }) => {
+validate.generateToken = async ({ userID, clientID, scope }) => {
   const token = utils.createToken({
     sub: userID,
     exp: config.token.expiresIn
   });
   const expiration = config.token.calculateExpirationDate();
-  return db.accessTokens.save(token, expiration, userID, clientID, scope)
-    .then(() => token);
+  
+  const tokenModel = new Token();
+  tokenModel.id = uuid.v1();
+  tokenModel.token = token;
+  tokenModel.userId = userID;
+  tokenModel.clientId = clientID;
+  tokenModel.expirationDate = expiration;
+  tokenModel.scope = scope;
+  await tokenModel.save();
+  return token;
+  // return db.accessTokens.save(token, expiration, userID, clientID, scope)
+  //   .then(() => token);
 };
 
 /**

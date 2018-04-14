@@ -12,16 +12,7 @@ const {
   token,
   tokenInfo,
 } = require('./properties.js');
-const promisify = require('es6-promisify');
-const request = require('request')
-  .defaults({
-    jar: true,
-    strictSSL: false
-  }); // eslint-disable-line
-
-const get = promisify(request.get, { multiArgs: true });
-const post = promisify(request.post, { multiArgs: true });
-
+const rp = require('request-promise');
 /**
  * These are all request helpers to help with testing
  */
@@ -30,29 +21,35 @@ module.exports = {
    * Logins as the login dialog/form would
    * @returns {Promise} The login success
    */
-  login: () => post(login, {
+  login: () => rp({
+    method: 'POST',
+    uri: login,
     form: {
       username,
-      password
-    }
+      password,
+    },
+    jar: true,
+    strictSSL: false
   }),
-  
   /**
    * Posts to the OAuth2 Authorization server the code to get the access token
    * @param   {String}  code  - The Authorization code
    * @returns {Promise} The auth code resolved
    */
   postOAuthCode: code =>
-    post(token, {
+    rp({
+      method: 'POST',
+      uri: token,
       form: {
         code,
         redirect_uri: redirect,
         client_id: clientId,
         client_secret: clientSecret,
-        grant_type: 'authorization_code',
+        grant_type: 'authoriztion_code',
       },
+      jar: true,
+      strictSSL: false
     }),
-  
   /**
    * Posts to the OAuth2 Authorization server the code to get the access token
    * @param   {String}  scope - The optional scope to use
@@ -60,7 +57,9 @@ module.exports = {
    */
   postOAuthPassword: (scope) => {
     const basicAuth = new Buffer(`${clientId}:${clientSecret}`).toString('base64');
-    return post(token, {
+    return rp({
+      method: 'POST',
+      uri: token,
       form: {
         username,
         password,
@@ -70,9 +69,10 @@ module.exports = {
       headers: {
         Authorization: `Basic ${basicAuth}`,
       },
+      jar: true,
+      strictSSL: false
     });
   },
-  
   /**
    * Posts to the OAuth2 Authorization server the code to get the access token
    * @param   {String}   scope - The optionally scope to use
@@ -80,7 +80,9 @@ module.exports = {
    */
   postOAuthClient: (scope) => {
     const basicAuth = new Buffer(`${clientId}:${clientSecret}`).toString('base64');
-    return post(token, {
+    return rp({
+      method: 'POST',
+      uri: token,
       form: {
         username,
         password,
@@ -89,6 +91,13 @@ module.exports = {
       },
       headers: {
         Authorization: `Basic ${basicAuth}`,
+      },
+      jar: true,
+      strictSSL: false,
+      json: true,
+      transform: function(body, res) {
+        // res.data = JSON.parse(body);
+        return res;
       },
     });
   },
@@ -100,16 +109,19 @@ module.exports = {
    */
   postRefeshToken: (refreshToken) => {
     const basicAuth = new Buffer(`${clientId}:${clientSecret}`).toString('base64');
-    return post(
-      token, {
-        form: {
-          refresh_token: refreshToken,
-          grant_type: 'refresh_token',
-        },
-        headers: {
-          Authorization: `Basic ${basicAuth}`,
-        },
-      });
+    return rp({
+      method: 'POST',
+      uri: token,
+      form: {
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      },
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+      },
+      jar: true,
+      strictSSL: false
+    });
   },
   
   /**
@@ -129,7 +141,12 @@ module.exports = {
     const response_type = (options.responseType) || 'code'; // eslint-disable-line camelcase
     const client_id = (options.clientId) || clientId;       // eslint-disable-line camelcase
     const scope = (options.scope) || '';
-    return get(`${auth}?redirect_uri=${redirect_uri}&response_type=${response_type}&client_id=${client_id}&scope=${scope}`); // eslint-disable-line camelcase
+    return rp({
+      method: 'GET',
+      uri: `${auth}?redirect_uri=${redirect_uri}&response_type=${response_type}&client_id=${client_id}&scope=${scope}`, // eslint-disable-line camelcase
+      jar: true,
+      strictSSL: false
+    });
   },
   
   /**
@@ -138,44 +155,57 @@ module.exports = {
    * @returns {Promise} User Info resolved
    */
   getUserInfo: accessToken =>
-    get({
-      url: userinfo,
+    rp({
+      method: 'GET',
+      uri: userinfo,
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      jar: true,
+      strictSSL: false
     }),
-  
   /**
    * Gets the client info from the OAuth2 authorization server
    * @param   {String}  accessToken - The access token to get the client info from
    * @returns {Promise} Client Info resolved
    */
   getClientInfo: accessToken =>
-    get({
-      url: clientinfo,
+    rp({
+      method: 'GET',
+      uri: clientinfo,
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      jar: true,
+      strictSSL: false,
+      json: true,
+      transform: function(body, res) {
+        // res.data = JSON.parse(body);
+        return res;
+      },
     }),
-  
   /**
    * Gets the token info from the OAuth2 authorization server
    * @param   {String}  accessToken - The access token to get the user info from
    * @returns {Promise} User Info resolved
    */
   getTokenInfo: accessToken =>
-    get({
-      url: `${tokenInfo}?access_token=${accessToken}`,
+    rp({
+      method: 'GET',
+      uri: `${tokenInfo}?access_token=${accessToken}`,
+      jar: true,
+      strictSSL: false
     }),
-  
   /**
    * Revokes a token from the OAuth2 authorization server
    * @param   {String}  accessToken - The access token to revoke
    * @returns {Promise} User revocation resolved
    */
   getRevokeToken: accessToken =>
-    get({
+    rp({
+      method: 'GET',
       url: `${revokeToken}?token=${accessToken}`,
+      jar: true,
+      strictSSL: false
     }),
-  
 };
