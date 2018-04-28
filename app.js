@@ -8,6 +8,7 @@ const passport = require('passport');
 const path = require('path');
 const mongoose = require('mongoose');
 mongoose.Promise = Promise;
+const morgan = require('morgan');
 
 const client = require('./client');
 const config = require('./config');
@@ -24,6 +25,7 @@ const MemoryStore = expressSession.MemoryStore;
 
 // Express configuration
 const app = express();
+app.use(morgan('combined'));
 app.set('view engine', 'ejs');
 app.use(cookieParser());
 

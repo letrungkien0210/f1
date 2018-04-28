@@ -59,7 +59,7 @@ validate.accessRefreshToken = (response, body) => {
   expect(response.statusCode)
     .to
     .eql(200);
-  const jsonResponse = JSON.parse(body);
+  const jsonResponse = body;
   expect(response.headers['content-type'])
     .to
     .eql('application/json');
@@ -92,7 +92,7 @@ validate.userJson = (response, body) => {
   expect(response.statusCode)
     .to
     .eql(200);
-  const jsonResponse = JSON.parse(body);
+  const jsonResponse = body;
   expect(response.headers['content-type'])
     .to
     .eql('application/json; charset=utf-8');

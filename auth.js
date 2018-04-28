@@ -18,8 +18,13 @@ const Token = require('./models/Token');
  */
 passport.use(new LocalStrategy((username, password, done) => {
   User.findOne({ username })
-    .then(user => validate.user(user, password))
-    .then(user => done(null, user))
+    .lean()
+    .then(user => {
+      return validate.user(user, password);
+    })
+    .then(user => {
+      return done(null, user)
+    })
     .catch(error => done(error, false));
   // db.users.findByUsername(username)
   //   .then(user => validate.user(user, password))
@@ -57,7 +62,7 @@ passport.use(new BasicStrategy((clientId, clientSecret, done) => {
  * which accepts those credentials and calls done providing a client.
  */
 passport.use(new ClientPasswordStrategy((clientId, clientSecret, done) => {
-  Client.findOne({ id: clientId })
+  Client.findOne({ clientId })
     .then(client => validate.client(client, clientSecret))
     .then(client => done(null, client))
     .catch(error => done(error, false));
@@ -103,7 +108,8 @@ passport.use(new BearerStrategy((accessToken, done) => {
 // the client by ID from the database.
 
 passport.serializeUser((user, done) => {
-  done(null, user.id);
+  const userId = user.id;
+  done(null, userId);
 });
 
 passport.deserializeUser((id, done) => {

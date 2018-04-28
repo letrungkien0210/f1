@@ -29,7 +29,8 @@ module.exports = {
       password,
     },
     jar: true,
-    strictSSL: false
+    strictSSL: false,
+    simple: false,
   }),
   /**
    * Posts to the OAuth2 Authorization server the code to get the access token
@@ -45,10 +46,14 @@ module.exports = {
         redirect_uri: redirect,
         client_id: clientId,
         client_secret: clientSecret,
-        grant_type: 'authoriztion_code',
+        grant_type: 'authorization_code',
       },
       jar: true,
-      strictSSL: false
+      strictSSL: false,
+      json: true,
+      transform: function(body, res) {
+        return res;
+      },
     }),
   /**
    * Posts to the OAuth2 Authorization server the code to get the access token
@@ -120,7 +125,11 @@ module.exports = {
         Authorization: `Basic ${basicAuth}`,
       },
       jar: true,
-      strictSSL: false
+      strictSSL: false,
+      json: true,
+      transform: function(body, res) {
+        return res;
+      },
     });
   },
   
@@ -145,7 +154,11 @@ module.exports = {
       method: 'GET',
       uri: `${auth}?redirect_uri=${redirect_uri}&response_type=${response_type}&client_id=${client_id}&scope=${scope}`, // eslint-disable-line camelcase
       jar: true,
-      strictSSL: false
+      strictSSL: false,
+      json: true,
+      transform: function(body, res) {
+        return res;
+      },
     });
   },
   
@@ -162,7 +175,12 @@ module.exports = {
         Authorization: `Bearer ${accessToken}`,
       },
       jar: true,
-      strictSSL: false
+      strictSSL: false,
+      json: true,
+      transform: function(body, res) {
+        // res.data = JSON.parse(body);
+        return res;
+      },
     }),
   /**
    * Gets the client info from the OAuth2 authorization server

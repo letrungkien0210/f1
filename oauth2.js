@@ -41,9 +41,10 @@ server.grant(oauth2orize.grant.code((client, redirectURI, user, ares, done) => {
   const authorizationCode = new AuthorizationCode();
   authorizationCode.id = uuid.v1();
   authorizationCode.code = code;
+  authorizationCode.clientId = client.clientId;
   authorizationCode.redirectUri = redirectURI;
   authorizationCode.userId = user.id;
-  authorizationCode.scope = client.cope;
+  authorizationCode.scope = client.scope;
   authorizationCode.save()
     .then(data => done(null, code))
     .catch(error => done(error));
@@ -94,7 +95,7 @@ server.exchange(oauth2orize.exchange.code(async (client, code, redirectURI, done
   // AuthorizationCode.remove({ code })
   //   .then()
   try{
-    const authCode = await  AuthorizationCode.findOne({ code });
+    const authCode = await  AuthorizationCode.findOne({ code }).lean();
     await AuthorizationCode.remove({ code });
     await validate.authCode(code, authCode, client, redirectURI);
     const tokens = await validate.generateTokens(authCode);
@@ -136,8 +137,8 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
     .then(user => validate.user(user, password))
     .then(user => validate.generateTokens({
       scope,
-      userID: user.id,
-      clientID: client.clientId
+      userId: user.id,
+      clientId: client.clientId
     }))
     .then((tokens) => {
       if (tokens === false) {
@@ -215,10 +216,21 @@ server.exchange(oauth2orize.exchange.clientCredentials((client, scope, done) => 
  */
 server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, done) => {
   RefreshToken.findOne({ refreshToken })
-    .then(foundRefreshToken => validate.refreshToken(foundRefreshToken, refreshToken, client))
-    .then(foundRefreshToken => validate.generateToken(foundRefreshToken))
-    .then(token => done(null, token, null, expiresIn))
-    .catch(() => done(null, false));
+    .exec()
+    .then(foundRefreshToken => {
+      validate.refreshToken(foundRefreshToken, refreshToken, client);
+      return foundRefreshToken;
+    })
+    .then(foundRefreshToken => {
+      return validate.generateToken(foundRefreshToken)
+    })
+    .then(token => {
+      done(null, token, null, expiresIn)
+    })
+    .catch(error => {
+      console.error(error);
+      done(null, false);
+    });
   
   // db.refreshTokens.find(refreshToken)
   //   .then(foundRefreshToken => validate.refreshToken(foundRefreshToken, refreshToken, client))
@@ -246,8 +258,8 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
  */
 exports.authorization = [
   login.ensureLoggedIn(),
-  server.authorization((clientID, redirectURI, scope, done) => {
-    Client.findOne({ id: clientID })
+  server.authorization((clientId, redirectURI, scope, done) => {
+    Client.findOne({ clientId })
       .then((client) => {
         if (client) {
           client.scope = scope;// fixme: where is client.scope ?
@@ -270,7 +282,7 @@ exports.authorization = [
     //   .catch(err => done(err));
   }),
   (req, res, next) => {
-    Client.findOne({ id: req.query.client_id })
+    Client.findOne({ clientId: req.query.client_id })
       .then((client) => {
         if (client != null && client.trustedClient && client.trustedClient === true) {
           server.decision({ loadTransaction: false }, (serverReq, callback) => {

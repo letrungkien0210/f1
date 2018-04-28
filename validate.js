@@ -98,7 +98,7 @@ validate.clientExists = (client) => {
 validate.token = async (token, accessToken) => {
   utils.verifyToken(accessToken);
   // token is a user token
-  if (token.userID != null) {
+  if (token.userId != null) {
     const user = await User.findOne({ id: token.userId });
     await validate.userExists(user)
     return user;
@@ -127,7 +127,7 @@ validate.token = async (token, accessToken) => {
  */
 validate.refreshToken = (token, refreshToken, client) => {
   utils.verifyToken(refreshToken);
-  if (client.id !== token.clientID) {
+  if (client.clientId !== token.clientId) {
     validate.logAndThrow('RefreshToken clientID does not match client id given');
   }
   return refreshToken;
@@ -147,10 +147,10 @@ validate.refreshToken = (token, refreshToken, client) => {
  */
 validate.authCode = (code, authCode, client, redirectURI) => {
   utils.verifyToken(code);
-  if (client.id !== authCode.clientID) {
+  if (client.clientId !== authCode.clientId) {
     validate.logAndThrow('AuthCode clientID does not match client id given');
   }
-  if (redirectURI !== authCode.redirectURI) {
+  if (redirectURI !== authCode.redirectUri) {
     validate.logAndThrow('AuthCode redirectURI does not match redirectURI given');
   }
   return authCode;
@@ -170,7 +170,7 @@ validate.isRefreshToken = ({ scope }) => scope != null && scope.indexOf('offline
  * @throws  {Object}  scope    - the scope
  * @returns {Promise} The resolved refresh token after saved
  */
-validate.generateRefreshToken = async ({ userId, clientID, scope }) => {
+validate.generateRefreshToken = async ({ userId, clientId, scope }) => {
   const refreshToken = utils.createToken({
     sub: userId,
     exp: config.refreshToken.expiresIn
@@ -179,7 +179,7 @@ validate.generateRefreshToken = async ({ userId, clientID, scope }) => {
   refreshTokenModel.id = uuid.v1();
   refreshTokenModel.refreshToken = refreshToken;
   refreshTokenModel.userId = userId;
-  refreshTokenModel.clientId = clientID;
+  refreshTokenModel.clientId = clientId;
   refreshTokenModel.scope = scope;
   await refreshTokenModel.save();
   return refreshToken;
@@ -194,9 +194,9 @@ validate.generateRefreshToken = async ({ userId, clientID, scope }) => {
  * @param   {scope}    scope    - The scope
  * @returns {Promise}  The resolved refresh token after saved
  */
-validate.generateToken = async ({ userID, clientID, scope }) => {
+validate.generateToken = async ({ userId, clientId, scope }) => {
   const token = utils.createToken({
-    sub: userID,
+    sub: userId,
     exp: config.token.expiresIn
   });
   const expiration = config.token.calculateExpirationDate();
@@ -204,8 +204,8 @@ validate.generateToken = async ({ userID, clientID, scope }) => {
   const tokenModel = new Token();
   tokenModel.id = uuid.v1();
   tokenModel.token = token;
-  tokenModel.userId = userID;
-  tokenModel.clientId = clientID;
+  tokenModel.userId = userId;
+  tokenModel.clientId = clientId;
   tokenModel.expirationDate = expiration;
   tokenModel.scope = scope;
   await tokenModel.save();
