@@ -107,10 +107,15 @@ describe('Grant Type Authorization Code', () => {
   
   it('should give an error with an invalid client id', () =>
     helper.login()
-      .then(() => helper.getAuthorization({ clientId: 'someinvalidclientid' }))
-      .then((res) => expect(res.statusCode)
-        .to
-        .eql(403)));
+      .then(() => {
+        return helper.getAuthorization({ clientId: 'someinvalidclientid' });
+      })
+      .catch(error => {
+        expect(error.statusCode)
+          .to
+          .eql(403);
+      })
+  );
   
   it('should give an error with a missing client id', () =>
     helper.login()
@@ -126,14 +131,20 @@ describe('Grant Type Authorization Code', () => {
           },
         });
       })
-      .then((res) => expect(res.statusCode)
-        .to
-        .eql(400)));
+      .catch(error => {
+        expect(error.statusCode)
+          .to
+          .eql(400);
+      })
+  );
   
   it('should give an error with an invalid response type', () =>
     helper.login()
       .then(() => helper.getAuthorization({ responseType: 'invalid' }))
-      .then((res) => expect(res.statusCode)
-        .to
-        .eql(501)));
+      .catch(error => {
+        expect(error.statusCode)
+          .to
+          .eql(501);
+      })
+  );
 });
