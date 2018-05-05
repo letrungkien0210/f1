@@ -1,7 +1,7 @@
 'use strict';
 
 // This is needed to start the server for the tests since these are more integration than unit tests
-require('../../app.js');
+// require('../../app.js');
 
 const helper   = require('./common').helper;
 const validate = require('./common').validate;
@@ -14,29 +14,33 @@ const validate = require('./common').validate;
 describe('Grant Type Password', () => {
   it('should work with asking for an access token and refresh token', () =>
     helper.postOAuthPassword('offline_access')
-    .then(([response, body]) => {
-      validate.accessRefreshToken(response, body);
-      return JSON.parse(body);
+    .then(res => {
+      const bodyJson = JSON.parse(res.body);
+      validate.accessRefreshToken(res, bodyJson);
+      return bodyJson;
     })
     .then((tokens) => {
       const userInfo = helper.getUserInfo(tokens.access_token)
-      .then(([response, body]) => validate.userJson(response, body));
+      .then(res => {
+        validate.userJson(res, res.body);
+      });
 
       const refreshToken = helper.postRefeshToken(tokens.refresh_token)
-      .then(([response, body]) => validate.accessToken(response, body));
+      .then(res => validate.accessToken(res, res.body));
 
       const refreshToken2 = helper.postRefeshToken(tokens.refresh_token)
-      .then(([response, body]) => validate.accessToken(response, body));
+      .then(res => validate.accessToken(res, res.body));
 
       return Promise.all([userInfo, refreshToken, refreshToken2]);
     }));
 
   it('should work just an access token and a scope of undefined', () =>
     helper.postOAuthPassword(undefined)
-    .then(([response, body]) => {
-      validate.accessToken(response, body);
-      return JSON.parse(body);
+    .then(res => {
+      const bodyJson = JSON.parse(res.body);
+      validate.accessToken(res, bodyJson);
+      return bodyJson;
     })
     .then(tokens => helper.getUserInfo(tokens.access_token))
-    .then(([response, body]) => validate.userJson(response, body)));
+    .then(res => validate.userJson(res, res.body)));
 });

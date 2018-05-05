@@ -75,7 +75,10 @@ module.exports = {
         Authorization: `Basic ${basicAuth}`,
       },
       jar: true,
-      strictSSL: false
+      strictSSL: false,
+      transform: function(body, res) {
+        return res;
+      },
     });
   },
   /**

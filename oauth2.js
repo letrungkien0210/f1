@@ -17,6 +17,7 @@ const Client = require('./models/Client');
 const AuthorizationCode = require('./models/AuthorizationCode');
 const Token = require('./models/Token');
 const RefreshToken = require('./models/RefreshToken');
+const User = require('./models/User');
 
 // create OAuth 2.0 server
 const server = oauth2orize.createServer();
@@ -69,6 +70,7 @@ server.grant(oauth2orize.grant.token((client, user, ares, done) => {
   const expiration = config.token.calculateExpirationDate();
 
   const tokenModel = new Token();
+  tokenModel.id = uuid.v1();
   tokenModel.token = token;
   tokenModel.userId = user.id;
   tokenModel.clientId = client.clientId;
@@ -133,8 +135,10 @@ server.exchange(oauth2orize.exchange.code(async (client, code, redirectURI, done
  * application issues an access token on behalf of the user who authorized the code.
  */
 server.exchange(oauth2orize.exchange.password((client, username, password, scope, done) => {
-  User.findOne({ username })
-    .then(user => validate.user(user, password))
+  User.findOne({ username: username })
+    .then(user => {
+      return validate.user(user, password);
+    })
     .then(user => validate.generateTokens({
       scope,
       userId: user.id,
@@ -152,7 +156,10 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
       }
       throw new Error('Error exchanging password for tokens');
     })
-    .catch(() => done(null, false));
+    .catch(error => {
+      console.log(error);
+      done(null, false);
+    });
   
   // db.users.findByUsername(username)
   //   .then(user => validate.user(user, password))
@@ -267,21 +274,12 @@ exports.authorization = [
         return done(null, client, redirectURI);
       })
       .catch(err => done(err));
-
-    // db.clients.findByClientId(clientID)
-    //   .then((client) => {
-    //     if (client) {
-    //       client.scope = scope; // eslint-disable-line no-param-reassign
-    //     }
-    //     // WARNING: For security purposes, it is highly advisable to check that
-    //     //          redirectURI provided by the client matches one registered with
-    //     //          the server.  For simplicity, this example does not.  You have
-    //     //          been warned.
-    //     return done(null, client, redirectURI);
-    //   })
-    //   .catch(err => done(err));
   }),
   (req, res, next) => {
+    // Render the decision dialog if the client isn't a trusted client
+    // TODO:  Make a mechanism so that if this isn't a trusted client, the user can record that
+    // they have consented but also make a mechanism so that if the user revokes access to any of
+    // the clients then they will have to re-consent.
     Client.findOne({ clientId: req.query.client_id })
       .then((client) => {
         if (client != null && client.trustedClient && client.trustedClient === true) {
@@ -302,31 +300,6 @@ exports.authorization = [
           user: req.user,
           client: req.oauth2.client
         }));
-    // Render the decision dialog if the client isn't a trusted client
-    // TODO:  Make a mechanism so that if this isn't a trusted client, the user can record that
-    // they have consented but also make a mechanism so that if the user revokes access to any of
-    // the clients then they will have to re-consent.
-    // db.clients.findByClientId(req.query.client_id)
-    //   .then((client) => {
-    //     if (client != null && client.trustedClient && client.trustedClient === true) {
-    //       // This is how we short call the decision like the dialog below does
-    //       server.decision({ loadTransaction: false }, (serverReq, callback) => {
-    //         callback(null, { allow: true });
-    //       })(req, res, next);
-    //     } else {
-    //       res.render('dialog', {
-    //         transactionID: req.oauth2.transactionID,
-    //         user: req.user,
-    //         client: req.oauth2.client
-    //       });
-    //     }
-    //   })
-    //   .catch(() =>
-    //     res.render('dialog', {
-    //       transactionID: req.oauth2.transactionID,
-    //       user: req.user,
-    //       client: req.oauth2.client
-    //     }));
   }];
 
 /**
