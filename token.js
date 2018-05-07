@@ -1,5 +1,8 @@
 const db = require('./db');
 const validate = require('./validate');
+const Token = require('./models/Token');
+const Client = require('./models/Client');
+const RefreshToken = require('./models/RefreshToken');
 
 /**
  * This endpoint is for verifying a token.  This has the same signature to
@@ -24,10 +27,10 @@ const validate = require('./validate');
  */
 exports.info = (req, res) =>
   validate.tokenForHttp(req.query.access_token)
-    .then(() => db.accessTokens.find(req.query.access_token))
+    .then(() => Token.findOne({ value: req.query.access_token }))
     .then(token => validate.tokenExistsForHttp(token))
     .then(token =>
-      db.clients.find(token.clientID)
+      Client.findOne({ clientId: token.clientID })
         .then(client => validate.clientExistsForHttp(client))
         .then(client => ({
           client,
@@ -68,10 +71,11 @@ exports.info = (req, res) =>
  */
 exports.revoke = (req, res) =>
   validate.tokenForHttp(req.query.token)
-    .then(() => db.accessTokens.delete(req.query.token))
+    .then(() => Token.remove({ token: req.query.token }))
     .then((token) => {
       if (token == null) {
-        return db.refreshTokens.delete(req.query.token);
+        // return db.refreshTokens.delete(req.query.token);
+        return RefreshToken.remove({ refreshToken: req.query.token });
       }
       return token;
     })
@@ -83,3 +87,4 @@ exports.revoke = (req, res) =>
       res.status(err.status);
       res.json({ error: err.message });
     });
+

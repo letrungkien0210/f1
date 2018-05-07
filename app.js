@@ -1,18 +1,23 @@
 const bodyParser = require('body-parser');
-const client = require('./client');
 const cookieParser = require('cookie-parser');
-const config = require('./config');
-const db = require('./db');
 const express = require('express');
 const expressSession = require('express-session');
 const fs = require('fs');
 const https = require('https');
-const oauth2 = require('./oauth2');
 const passport = require('passport');
 const path = require('path');
+const mongoose = require('mongoose');
+mongoose.Promise = Promise;
+const morgan = require('morgan');
+
+const client = require('./client');
+const config = require('./config');
+const db = require('./db');
+const oauth2 = require('./oauth2');
 const site = require('./site');
 const token = require('./token');
 const user = require('./user');
+
 
 console.log('Using MemoryStore for the data store');
 console.log('Using MemoryStore for the Session');
@@ -20,6 +25,7 @@ const MemoryStore = expressSession.MemoryStore;
 
 // Express configuration
 const app = express();
+app.use(morgan('combined'));
 app.set('view engine', 'ejs');
 app.use(cookieParser());
 
@@ -37,6 +43,18 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
 app.use(passport.session());
+
+mongoose.connect(config.databaseTest);
+const dbMongoose = mongoose.connection;
+dbMongoose.on('error', (error) => {
+  console.error(error);
+});
+dbMongoose.on('connected', () => {
+  console.log(`Mongoose default connection open to ${config.databaseTest}`);
+});
+dbMongoose.on('disconnected', () => {
+  console.log('Mongoose default connection disconnected');
+});
 
 // Passport configuration
 require('./auth');
@@ -102,4 +120,12 @@ const options = {
 // Create our HTTPS server listening on port 3000.
 https.createServer(options, app)
   .listen(3000);
-console.log('OAuth 2.0 Authorization Server started on port 3000');
+console.log('Simple Finance API started on port 3000');
+
+// If the Node process ends, close the Mongoose connection
+process.on('SIGINT', function() {
+  dbMongoose.close(function () {
+    console.log('Mongoose default connection disconnected through app termination');
+    process.exit(0);
+  });
+});

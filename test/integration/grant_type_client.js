@@ -9,23 +9,23 @@ const validate = require('./common').validate;
 describe('Grant Type Client', () => {
   it('should work with asking for an access token', () =>
     helper.postOAuthClient({})
-      .then(([response, body]) => {
-        validate.accessToken(response, body);
-        return JSON.parse(body);
+      .then(res => {
+        validate.accessToken(res, res.body);
+        return res.body;
       })
       .then(tokens => {
         return helper.getClientInfo(tokens.access_token);
       })
-      .then(([response, body]) => {
-        return validate.clientJson(response, body);
+      .then((res) => {
+        return validate.clientJson(res, res.body);
       }));
   
   it('should work with a scope of undefined', () =>
     helper.postOAuthClient(undefined)
-      .then(([response, body]) => {
-        validate.accessToken(response, body);
-        return JSON.parse(body);
+      .then(res => {
+        validate.accessToken(res, res.body);
+        return res.body;
       })
       .then(tokens => helper.getClientInfo(tokens.access_token))
-      .then(([response, body]) => validate.clientJson(response, body)));
+      .then(res => validate.clientJson(res, res.body)));
 });
