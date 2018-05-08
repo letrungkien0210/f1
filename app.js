@@ -17,6 +17,8 @@ const oauth2 = require('./oauth2');
 const site = require('./site');
 const token = require('./token');
 const user = require('./user');
+const appVersion = require('./package').version;
+const versionHandler = (req, res) => res.status(200).json({ version: appVersion });
 
 
 console.log('Using MemoryStore for the data store');
@@ -79,6 +81,8 @@ app.get('/api/tokeninfo', token.info);
 // Mimicking google's token revoke endpoint from
 // https://developers.google.com/identity/protocols/OAuth2WebServer
 app.get('/api/revoke', token.revoke);
+
+app.get('/version', versionHandler);
 
 // static resources for stylesheets, images, javascript files
 app.use(express.static(path.join(__dirname, 'public')));
